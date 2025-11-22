@@ -1,0 +1,35 @@
+---
+description: This rule explains Express.js conventions and best practices for Node.js backend development.
+globs: **/*.js,**/*.ts
+alwaysApply: false
+---
+- Use proper middleware order: body parsers, custom middleware, routes, error handlers
+- Organize routes using Express Router for modular code structure
+- Use async/await with proper error handling and try/catch blocks
+- Create a centralized error handler middleware as the last middleware
+- Use environment variables for configuration with a config module
+- Implement request validation using libraries like express-validator
+- Use middleware for authentication and authorization
+- Use appropriate HTTP status codes in responses
+- Design API routes to match the frontend contract in BACKEND_SPEC.md. Ensure names, params, and behavior (including validation and error cases) are consistent with the frontend and provided backend spec.
+- Enforce all validation and business logic described in BACKEND_SPEC.md, including required fields, type checks, uniqueness constraints (case-insensitive where noted), and dependent relationships (e.g., cannot delete referenced Treatment Types).
+- Closely follow REST conventions: use proper HTTP verbs (GET for fetch, POST for create, PUT for update, DELETE for remove).
+- All API responses must return JSON with appropriate status codes. Errors must use correct codes (400 validation, 401/403 auth, 404 not found, 409 conflict, etc.) and consistent JSON error format (`{ error: string }`).
+- Implement data integrity checks such as:
+    - One-to-one/one-to-many links (e.g., each Patient has one MedicalRecord, PriceListItem is unique for each TreatmentType).
+    - Cascade or block deletes based on relationships (do not allow deleting referenced entities).
+- Reflect business logic in request handling, e.g.:
+    - Preventing completion of appointments without patients.
+    - Forcing payroll/medical record links on relevant status transitions.
+    - Ensuring side effects like automatic MedicalRecord creation.
+- Use route-level input validation for all create/update endpoints, with detailed validation error messages for required fields, value ranges, and foreign key existence.
+- Adhere to project conventions: use camelCase properties in JSON responses, but map to SQL/database snake_case fields as needed (if using an ORM).
+- Support date/time formats and intervals as required, e.g., accept ISO date strings for all date fields, enforce time slot validation for 30-minute increments for appointments.
+- On data mutation endpoints, return the updated/created object (not just an OK status) unless specified otherwise.
+- For endpoints involving files (e.g., attached medical record files), accept and return file payloads as base64 within JSON, do not use multipart.
+- All entity IDs are strings (typically UUIDs); always validate/request as strings, not numbers.
+- Pagination, filtering, and sorting (where required by frontend) should be implemented as query params.
+- Ensure all route handlers and services follow proper async/await style, and never swallow errors (route logic must propagate errors to centralized error handler).
+- For any backend-calculated fields or reports, exactly match output schemas and calculation rules as described in BACKEND_SPEC.md.
+- Document any custom middleware, route structure, or error shapes in code comments for maintainability.
+

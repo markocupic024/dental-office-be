@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  role         Role
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Patient {
+  id                  String   @id @default(uuid())
+  firstName           String   @map("first_name")
+  lastName            String   @map("last_name")
+  phone               String
+  email               String   @unique
+  address             String?
+  dateOfBirth         DateTime @map("date_of_birth")
+  hasPayrollDeduction Boolean  @default(false) @map("has_payroll_deduction")
+  companyName         String?  @map("company_name")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  medicalRecord MedicalRecord?
+  appointments  Appointment[]
+
+  @@map("patients")
+}
+
+model TreatmentType {
+  id                   String              @id @default(uuid())
+  label                String              @unique
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  priceListItem        PriceListItem?
+  appointments         Appointment[]
+  medicalRecordEntries MedicalRecordEntry[]
+
+  @@map("treatment_types")
+}
+
+model PriceListItem {
+  id              String        @id @default(uuid())
+  treatmentTypeId String        @unique @map("treatment_type_id")
+  price           Decimal       @db.Decimal(10, 2)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  treatmentType   TreatmentType @relation(fields: [treatmentTypeId], references: [id], onDelete: Cascade)
+
+  @@map("price_list_items")
+}
+
+model Appointment {
+  id                     String            @id @default(uuid())
+  patientId              String?           @map("patient_id")
+  treatmentTypeId        String            @map("treatment_type_id")
+  date                   DateTime          @db.Date
+  time                   String
+  status                 AppointmentStatus @default(scheduled)
+  notes                  String?           @db.Text
+  payrollDeductionMonths Int?              @map("payroll_deduction_months")
+  payrollDeductionAmount Decimal?          @map("payroll_deduction_amount") @db.Decimal(10, 2)
+  createdAt              DateTime          @default(now()) @map("created_at")
+  updatedAt              DateTime          @updatedAt @map("updated_at")
+
+  patient              Patient?             @relation(fields: [patientId], references: [id])
+  treatmentType        TreatmentType        @relation(fields: [treatmentTypeId], references: [id])
+  medicalRecordEntries MedicalRecordEntry[]
+
+  @@map("appointments")
+}
+
+model MedicalRecord {
+  id        String   @id @default(uuid())
+  patientId String   @unique @map("patient_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  patient Patient              @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  entries MedicalRecordEntry[]
+
+  @@map("medical_records")
+}
+
+model MedicalRecordEntry {
+  id              String   @id @default(uuid())
+  medicalRecordId String   @map("medical_record_id")
+  appointmentId   String?  @map("appointment_id")
+  treatmentTypeId String   @map("treatment_type_id")
+  date            DateTime @db.Date
+  doctorReport    String?  @map("doctor_report") @db.Text
+  attachedFile    Json?    @map("attached_file")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+  appointment   Appointment?  @relation(fields: [appointmentId], references: [id])
+  treatmentType TreatmentType @relation(fields: [treatmentTypeId], references: [id])
+
+  @@map("medical_record_entries")
+}
+
+model Report {
+  id          String     @id @default(uuid())
+  type        ReportType
+  date        DateTime   @db.Date
+  startDate   DateTime   @map("start_date") @db.Date
+  endDate     DateTime   @map("end_date") @db.Date
+  totalAmount Decimal    @map("total_amount") @db.Decimal(15, 2)
+  data        Json
+  companyName String?    @map("company_name")
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  @@map("reports")
+}
+
+enum Role {
+  admin
+  dentist
+}
+
+enum AppointmentStatus {
+  scheduled
+  completed
+  cancelled
+}
+
+enum ReportType {
+  daily
+  weekly
+  monthly
+  payrollDeduction
+}
