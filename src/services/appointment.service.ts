@@ -41,6 +41,55 @@ export const create = async (data: Omit<Appointment, 'id' | 'createdAt' | 'updat
     date: data.date instanceof Date ? data.date : new Date(data.date),
   };
 
+  // If creating with completed status, create medical record entry
+  if (data.status === 'completed' && data.patientId) {
+    return prisma.$transaction(async (tx) => {
+      const patient = await tx.patient.findUnique({ where: { id: data.patientId! }});
+      if (!patient) throw new Error('Patient not found');
+
+      if (patient.hasPayrollDeduction) {
+        const months = data.payrollDeductionMonths;
+        const amount = data.payrollDeductionAmount;
+        
+        if (!months || months < 1) {
+          throw new Error('Payroll deduction months required for this patient');
+        }
+        if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+          throw new Error('Payroll deduction amount is required and must be a positive number for this patient');
+        }
+      }
+
+      // Create appointment
+      const appointment = await tx.appointment.create({
+        data: appointmentData,
+        include: { 
+          patient: true,
+          treatmentType: true 
+        },
+      });
+
+      // Ensure Medical Record exists
+      let medicalRecord = await tx.medicalRecord.findUnique({ where: { patientId: data.patientId! }});
+      if (!medicalRecord) {
+        medicalRecord = await tx.medicalRecord.create({ data: { patientId: data.patientId! }});
+      }
+
+      // Create Entry
+      const entryDate = appointmentData.date instanceof Date ? appointmentData.date : new Date(appointmentData.date);
+      await tx.medicalRecordEntry.create({
+        data: {
+          medicalRecordId: medicalRecord.id,
+          appointmentId: appointment.id,
+          treatmentTypeId: appointmentData.treatmentTypeId,
+          date: entryDate,
+          doctorReport: appointmentData.notes || ''
+        }
+      });
+
+      return appointment;
+    });
+  }
+
   return prisma.appointment.create({
     data: appointmentData,
     include: { 

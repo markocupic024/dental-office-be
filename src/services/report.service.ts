@@ -5,9 +5,31 @@ import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
 export const getAll = async (type?: ReportType) => {
   const where: any = {};
   if (type) where.type = type;
-  return prisma.report.findMany({
+  const reports = await prisma.report.findMany({
     where,
     orderBy: { createdAt: 'desc' }
+  });
+  
+  // Transform reports to include treatmentSummaries and other fields
+  return reports.map(report => {
+    const data = report.data as any;
+    const transformed: any = {
+      ...report,
+      totalAmount: Number(report.totalAmount),
+    };
+    
+    if (report.type === 'payrollDeduction') {
+      transformed.payrollDeductionEntries = data || [];
+      transformed.activeDeductionsCount = Array.isArray(data) ? data.length : 0;
+    } else {
+      // For daily, weekly, monthly reports
+      transformed.treatmentSummaries = data || [];
+      transformed.appointmentsCount = Array.isArray(data) 
+        ? data.reduce((sum: number, item: any) => sum + (item.count || 0), 0)
+        : 0;
+    }
+    
+    return transformed;
   });
 };
 
@@ -104,7 +126,7 @@ const generateTreatmentReport = async (type: ReportType, date: Date, startDate: 
 
     const summaries = Array.from(summaryMap.values());
 
-    return prisma.report.create({
+    const report = await prisma.report.create({
         data: {
             type,
             date,
@@ -114,6 +136,14 @@ const generateTreatmentReport = async (type: ReportType, date: Date, startDate: 
             data: summaries, // JSON
         }
     });
+    
+    // Transform report to include treatmentSummaries
+    return {
+        ...report,
+        totalAmount: Number(report.totalAmount),
+        treatmentSummaries: summaries,
+        appointmentsCount: summaries.reduce((sum, item) => sum + item.count, 0),
+    };
 };
 
 const generatePayrollReport = async (reportDate: Date, companyNameFilter?: string) => {
@@ -164,7 +194,7 @@ const generatePayrollReport = async (reportDate: Date, companyNameFilter?: strin
         }
     }
 
-    return prisma.report.create({
+    const report = await prisma.report.create({
         data: {
             type: 'payrollDeduction',
             date: reportDate,
@@ -175,6 +205,14 @@ const generatePayrollReport = async (reportDate: Date, companyNameFilter?: strin
             companyName: companyNameFilter
         }
     });
+    
+    // Transform report to include payrollDeductionEntries
+    return {
+        ...report,
+        totalAmount: Number(report.totalAmount),
+        payrollDeductionEntries: entries,
+        activeDeductionsCount: entries.length,
+    };
 }
 
 export const remove = async (id: string) => {
