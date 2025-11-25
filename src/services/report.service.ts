@@ -147,11 +147,18 @@ const generateTreatmentReport = async (type: ReportType, date: Date, startDate: 
 };
 
 const generatePayrollReport = async (reportDate: Date, companyNameFilter?: string) => {
-    // Find all appointments with payroll deduction
+    // Find all completed appointments with payroll deduction that are active on the report date
+    // An appointment is active if:
+    // 1. It's completed
+    // 2. It has payroll deduction
+    // 3. The appointment date is on or before the report date
+    // 4. There are still remaining months to pay
     const appointments = await prisma.appointment.findMany({
         where: {
+            status: 'completed',
             payrollDeductionAmount: { gt: 0 },
-            patientId: { not: null }
+            patientId: { not: null },
+            date: { lte: reportDate } // Only appointments on or before report date
         },
         include: { 
             patient: true,
@@ -171,11 +178,17 @@ const generatePayrollReport = async (reportDate: Date, companyNameFilter?: strin
         const totalAmount = Number(appt.payrollDeductionAmount);
         const monthlyRate = totalAmount / appt.payrollDeductionMonths;
         
-        const monthsPassed = differenceInMonths(reportDate, appt.date); // Appointment Date vs Report Date
+        // Calculate months passed from appointment date to report date
+        // This should be >= 0 since we filtered for date <= reportDate
+        const monthsPassed = differenceInMonths(reportDate, appt.date);
+        
+        // Ensure monthsPassed is not negative (shouldn't happen with the filter, but safety check)
+        if (monthsPassed < 0) continue;
 
         const paidAmount = Math.min(monthlyRate * monthsPassed, totalAmount);
         const remainingMonths = appt.payrollDeductionMonths - monthsPassed;
 
+        // Only include if there are remaining months (deduction is still active)
         if (remainingMonths > 0) {
              entries.push({
                 patientId: appt.patientId,
