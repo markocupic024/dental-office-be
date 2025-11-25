@@ -23,7 +23,9 @@ const entrySchema = z.object({
     attachedFile: attachedFileSchema
 });
 
-const entryUpdateSchema = entrySchema.partial();
+const entryUpdateSchema = entrySchema.partial().extend({
+    doctorReport: z.string().nullable().optional(),
+});
 
 router.use(authenticate);
 

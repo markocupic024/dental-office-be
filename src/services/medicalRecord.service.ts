@@ -64,16 +64,23 @@ export const updateEntry = async (id: string, data: Partial<MedicalRecordEntry>)
 
   // Ensure date is a proper Date object if provided
   // Handle attachedFile: Prisma JSON fields need special handling for null
+  // Handle optional string fields: convert empty strings to null for clearing
   const updateData = Object.fromEntries(
-    Object.entries(data).map(([key, value]) => {
-      if (key === 'date' && value) {
-        return [key, value instanceof Date ? value : new Date(value as string)];
-      }
-      if (key === 'attachedFile' && value !== undefined) {
-        return [key, value === null ? Prisma.JsonNull : value];
-      }
-      return [key, value];
-    })
+    Object.entries(data)
+      .filter(([_, value]) => value !== undefined) // Remove undefined values
+      .map(([key, value]) => {
+        if (key === 'date' && value) {
+          return [key, value instanceof Date ? value : new Date(value as string)];
+        }
+        if (key === 'attachedFile' && value !== undefined) {
+          return [key, value === null ? Prisma.JsonNull : value];
+        }
+        // Convert empty strings to null for optional string fields (doctorReport)
+        if ((key === 'doctorReport') && value === '') {
+          return [key, null];
+        }
+        return [key, value];
+      })
   )
 
   return prisma.medicalRecordEntry.update({
