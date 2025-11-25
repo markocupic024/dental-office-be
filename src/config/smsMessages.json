@@ -1,0 +1,6 @@
+{
+  "birthday": "Srećan rođendan! Želimo vam sve najbolje i zdravlje! Vaša stomatološka ordinacija Kuprešanin.",
+  "appointmentReminder": "Podsećanje: Imate zakazan termin {date} u {time} za {treatmentType}. Molimo vas da dođete na vreme. Vaša ordinacija Kuprešanin.",
+  "nextDayAppointments": "Pregled termina za sutra: Ukupno {appointmentCount} termina.\n{appointmentsList}\nVaša ordinacija Kuprešanin."
+}
+

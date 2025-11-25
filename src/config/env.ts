@@ -10,6 +10,8 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
   UPLOADS_DIR: z.string().default('./uploads'),
   MAX_FILE_SIZE: z.string().default('10485760'), // 10MB in bytes
+  TIMEZONE: z.string().optional(),
+  SMS_ENABLED: z.string().optional(),
 });
 
 const envVars = envSchema.safeParse(process.env);

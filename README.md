@@ -54,13 +54,14 @@ Once running, visit `http://localhost:3000/api-docs` for Swagger documentation.
 
 ```
 src/
-├── config/          # Configuration (env, database, swagger)
+├── config/          # Configuration (env, database, swagger, SMS messages)
 ├── controllers/     # Request handlers
+├── jobs/            # Background job definitions (SMS scheduler)
 ├── middlewares/     # Express middlewares (auth, validation, error handling)
 ├── routes/          # API route definitions
-├── services/        # Business logic
+├── services/        # Business logic (including SMS and file storage)
 ├── types/           # TypeScript type definitions
-└── utils/           # Utility functions (logger, jwt, password)
+└── utils/           # Utility functions (logger, jwt, password, file storage)
 ```
 
 ## Key Features
@@ -71,6 +72,8 @@ src/
 - **ORM:** Prisma for type-safe database access
 - **Documentation:** Swagger/OpenAPI at `/api-docs`
 - **Error Handling:** Centralized error handler middleware
+- **File Storage:** Filesystem-based file storage for medical record attachments
+- **SMS Background Jobs:** Automated SMS notifications for birthdays, appointment reminders, and next-day appointments
 
 ## Database Schema
 
@@ -78,9 +81,50 @@ See `prisma/schema.prisma` for the complete data model including:
 - Users (admin/dentist roles)
 - Patients (with payroll deduction support)
 - Appointments (with status tracking)
-- Medical Records & Entries
+- Medical Records & Entries (with file attachments)
+- Medical Record Files (filesystem-based file storage)
 - Treatment Types & Price List
 - Reports (daily/weekly/monthly/payroll)
+
+## SMS Background Jobs
+
+The application includes automated SMS notification jobs that run on a schedule:
+
+### Scheduled Jobs
+
+1. **Birthday SMS** - Daily at 8:00 AM
+   - Sends generic birthday message to all patients whose birthday is today
+   - Message template: `src/config/smsMessages.json`
+
+2. **Appointment Reminders** - Daily at 8:00 AM
+   - Sends reminders to patients with appointments scheduled for today
+   - Includes date, time, and treatment type
+
+3. **Next-Day Appointments Notification** - Daily at 9:00 PM
+   - Sends notifications to users (admins/dentists) about appointments scheduled for tomorrow
+   - Includes appointment count and list with times and treatment types
+
+### Configuration
+
+- **Enable/Disable:** Set `SMS_ENABLED=false` in `.env` to disable all SMS jobs
+- **Timezone:** Set `TIMEZONE` environment variable (e.g., `Europe/Belgrade`) for job scheduling
+- **Message Templates:** Edit `src/config/smsMessages.json` to customize SMS messages (all in Serbian)
+
+### Mock SMS Service
+
+Currently, SMS sending is implemented as a mock service that logs messages to the console. To integrate with a real SMS provider:
+
+1. Update `src/services/sms.service.ts`
+2. Replace the `sendSMS()` function with your SMS API integration
+3. Messages are logged with format: `[MOCK SMS] To: {phone}, Message: {message}`
+
+### Job Logging
+
+All SMS job executions are logged using Winston:
+- Job start/completion
+- Number of messages sent
+- Success/failure counts
+- Error details
 
 ## Environment Variables
 
@@ -90,4 +134,8 @@ See `prisma/schema.prisma` for the complete data model including:
 | `JWT_SECRET` | Secret key for JWT signing | Required |
 | `PORT` | Server port | `3000` |
 | `NODE_ENV` | Environment mode | `development` |
+| `UPLOADS_DIR` | Directory for file uploads | `./uploads` |
+| `MAX_FILE_SIZE` | Maximum file size in bytes | `10485760` (10MB) |
+| `TIMEZONE` | Timezone for scheduled jobs (e.g., "Europe/Belgrade") | Server timezone |
+| `SMS_ENABLED` | Enable/disable SMS background jobs | `true` (set to `false` to disable) |
 
