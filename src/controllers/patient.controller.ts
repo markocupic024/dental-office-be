@@ -28,8 +28,12 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
     const patient = await patientService.create(req.body);
     res.status(201).json(patient);
   } catch (error: any) {
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ error: error.code });
+    }
+    // Fallback for Prisma errors (in case they slip through)
     if (error.code === 'P2002') {
-        return res.status(409).json({ error: ERROR_CODES.EMAIL_ALREADY_EXISTS });
+      return res.status(409).json({ error: ERROR_CODES.EMAIL_ALREADY_EXISTS });
     }
     next(error);
   }

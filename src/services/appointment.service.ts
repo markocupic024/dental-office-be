@@ -51,11 +51,18 @@ export const create = async (data: Omit<Appointment, 'id' | 'createdAt' | 'updat
       if (patient.hasPayrollDeduction) {
         const months = data.payrollDeductionMonths;
         const amount = data.payrollDeductionAmount;
+        const treatmentTypeId = appointmentData.treatmentTypeId;
+        const priceListItem = treatmentTypeId
+          ? await tx.priceListItem.findUnique({ where: { treatmentTypeId }})
+          : null;
+        const requiresDetails = Boolean(priceListItem);
         
-        if (!months || months < 1) {
-          throw new AppError(ERROR_CODES.PAYROLL_DEDUCTION_MONTHS_REQUIRED, 400);
+        if (requiresDetails) {
+          if (!months || months < 1) {
+            throw new AppError(ERROR_CODES.PAYROLL_DEDUCTION_MONTHS_REQUIRED, 400);
+          }
         }
-        if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+        if (requiresDetails && (!amount || isNaN(Number(amount)) || Number(amount) <= 0)) {
           throw new AppError(ERROR_CODES.PAYROLL_DEDUCTION_AMOUNT_REQUIRED, 400);
         }
       }
@@ -127,12 +134,19 @@ export const update = async (id: string, data: Partial<Appointment>) => {
         if (patient.hasPayrollDeduction) {
             const months = data.payrollDeductionMonths || appointment.payrollDeductionMonths;
             const amount = data.payrollDeductionAmount || appointment.payrollDeductionAmount;
+            const treatmentTypeId = data.treatmentTypeId || appointment.treatmentTypeId;
+            const priceListItem = treatmentTypeId
+                ? await tx.priceListItem.findUnique({ where: { treatmentTypeId }})
+                : null;
+            const requiresDetails = Boolean(priceListItem);
             
-            if (!months || months < 1) {
-                throw new AppError(ERROR_CODES.PAYROLL_DEDUCTION_MONTHS_REQUIRED, 400);
+            if (requiresDetails) {
+                if (!months || months < 1) {
+                    throw new AppError(ERROR_CODES.PAYROLL_DEDUCTION_MONTHS_REQUIRED, 400);
+                }
             }
              // Amount is usually set by frontend, strictly we should ensure it's there
-             if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+             if (requiresDetails && (!amount || isNaN(Number(amount)) || Number(amount) <= 0)) {
                  throw new AppError(ERROR_CODES.PAYROLL_DEDUCTION_AMOUNT_REQUIRED, 400);
              }
         }

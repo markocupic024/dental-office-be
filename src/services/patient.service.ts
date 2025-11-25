@@ -16,6 +16,16 @@ export const getById = async (id: string) => {
 
 export const create = async (data: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>) => {
   return prisma.$transaction(async (tx) => {
+    // Check if email already exists
+    if (data.email) {
+      const existing = await tx.patient.findUnique({
+        where: { email: data.email },
+      });
+      if (existing) {
+        throw new AppError(ERROR_CODES.EMAIL_ALREADY_EXISTS, 409);
+      }
+    }
+
     // Ensure dateOfBirth is a proper Date object
     const patientData = {
       ...data,
@@ -45,6 +55,16 @@ export const update = async (id: string, data: Partial<Patient>) => {
   
   if (!existing) {
     throw new AppError(ERROR_CODES.PATIENT_NOT_FOUND, 404);
+  }
+
+  // Check if email is being updated and if it already exists for another patient
+  if (data.email && data.email !== existing.email) {
+    const emailExists = await prisma.patient.findUnique({
+      where: { email: data.email },
+    });
+    if (emailExists) {
+      throw new AppError(ERROR_CODES.EMAIL_ALREADY_EXISTS, 409);
+    }
   }
 
   // Ensure dateOfBirth is a proper Date object if provided
