@@ -3,24 +3,43 @@ import * as mrController from '../controllers/medicalRecord.controller';
 import { authenticate } from '../middlewares/auth';
 import { validate } from '../middlewares/validate';
 import { z } from 'zod';
+import multer from 'multer';
+import { env } from '../config/env';
 
 const router = Router();
 
-// Validations
-const attachedFileSchema = z.object({
-    fileName: z.string(),
-    fileData: z.string(), // Base64
-    fileType: z.string(),
-    uploadedAt: z.string()
-}).optional().nullable();
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: parseInt(env.MAX_FILE_SIZE, 10),
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow common document and image types
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  },
+});
 
+// Validations
 const entrySchema = z.object({
     medicalRecordId: z.string().uuid(),
     appointmentId: z.string().uuid().optional().nullable(),
     treatmentTypeId: z.string().uuid(),
     date: z.string().transform((val) => new Date(val)),
     doctorReport: z.string().optional(),
-    attachedFile: attachedFileSchema
 });
 
 const entryUpdateSchema = entrySchema.partial().extend({
@@ -158,6 +177,92 @@ router.post('/entries', validate(entrySchema), mrController.createEntry);
  *         description: Medical record entry updated
  */
 router.put('/entries/:id', validate(entryUpdateSchema), mrController.updateEntry);
+
+/**
+ * @swagger
+ * /medical-records/entries/{entryId}/files:
+ *   post:
+ *     tags: [Medical Records]
+ *     summary: Upload a file to a medical record entry
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: entryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       201:
+ *         description: File uploaded successfully
+ *       400:
+ *         description: Invalid file or file too large
+ */
+router.post('/entries/:entryId/files', upload.single('file'), mrController.uploadFile);
+
+/**
+ * @swagger
+ * /medical-records/files/{fileId}:
+ *   get:
+ *     tags: [Medical Records]
+ *     summary: Download a file
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: File content
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: File not found
+ */
+router.get('/files/:fileId', mrController.downloadFile);
+
+/**
+ * @swagger
+ * /medical-records/files/{fileId}:
+ *   delete:
+ *     tags: [Medical Records]
+ *     summary: Delete a file
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: fileId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: File deleted successfully
+ *       404:
+ *         description: File not found
+ */
+router.delete('/files/:fileId', mrController.deleteFile);
 
 export default router;
 

@@ -8,6 +8,8 @@ const envSchema = z.object({
   PORT: z.string().default('3000'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
+  UPLOADS_DIR: z.string().default('./uploads'),
+  MAX_FILE_SIZE: z.string().default('10485760'), // 10MB in bytes
 });
 
 const envVars = envSchema.safeParse(process.env);

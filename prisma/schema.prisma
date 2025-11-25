@@ -100,15 +100,28 @@ model MedicalRecordEntry {
   treatmentTypeId String   @map("treatment_type_id")
   date            DateTime @db.Date
   doctorReport    String?  @map("doctor_report") @db.Text
-  attachedFile    Json?    @map("attached_file")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
   appointment   Appointment?  @relation(fields: [appointmentId], references: [id])
   treatmentType TreatmentType @relation(fields: [treatmentTypeId], references: [id])
+  files         MedicalRecordFile[]
 
   @@map("medical_record_entries")
+}
+
+model MedicalRecordFile {
+  id                  String            @id @default(uuid())
+  medicalRecordEntryId String            @map("medical_record_entry_id")
+  fileName            String            @map("file_name")
+  filePath            String            @map("file_path")
+  fileType            String            @map("file_type")
+  fileSize            Int               @map("file_size")
+  uploadedAt          DateTime          @default(now()) @map("uploaded_at")
+  medicalRecordEntry  MedicalRecordEntry @relation(fields: [medicalRecordEntryId], references: [id], onDelete: Cascade)
+
+  @@map("medical_record_files")
 }
 
 model Report {
