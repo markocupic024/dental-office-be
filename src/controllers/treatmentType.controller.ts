@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as ttService from '../services/treatmentType.service';
+import { AppError } from '../utils/errors';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -15,8 +16,8 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
         const type = await ttService.create(req.body.label);
         res.status(201).json(type);
     } catch (error: any) {
-        if (error.message === 'Treatment type already exists') {
-            return res.status(409).json({ error: error.message });
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({ error: error.code });
         }
         next(error);
     }
@@ -27,11 +28,8 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
         const type = await ttService.update(req.params.id, req.body.label);
         res.json(type);
     } catch (error: any) {
-        if (error.message === 'Treatment type not found') {
-            return res.status(404).json({ error: error.message });
-        }
-        if (error.message === 'Treatment type with this label already exists') {
-            return res.status(409).json({ error: error.message });
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({ error: error.code });
         }
         next(error);
     }
@@ -42,12 +40,8 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
         await ttService.remove(req.params.id);
         res.status(200).json({ message: 'Treatment type deleted' });
     } catch (error: any) {
-        if (error.message === 'Treatment type not found') {
-            return res.status(404).json({ error: error.message });
-        }
-        if (error.message === 'Cannot delete treatment type used in appointments' ||
-            error.message === 'Cannot delete treatment type used in medical records') {
-            return res.status(409).json({ error: error.message });
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({ error: error.code });
         }
         next(error);
     }

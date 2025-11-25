@@ -1,6 +1,7 @@
 import prisma from '../config/db';
 import { ReportType } from '@prisma/client';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, differenceInMonths } from 'date-fns';
+import { AppError, ERROR_CODES } from '../utils/errors';
 
 export const getAll = async (type?: ReportType) => {
   const where: any = {};
@@ -58,7 +59,7 @@ export const create = async (data: { type: ReportType; date: string; companyName
             endDate = reportDate;
             break;
         default:
-            throw new Error('Invalid report type');
+            throw new AppError(ERROR_CODES.INVALID_REPORT_TYPE, 400);
     }
 
     if (data.type === 'payrollDeduction') {

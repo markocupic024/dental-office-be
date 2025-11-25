@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { MedicalRecordEntry, Prisma } from '@prisma/client';
+import { AppError, ERROR_CODES } from '../utils/errors';
 
 export const getByPatientId = async (patientId: string) => {
   let record = await prisma.medicalRecord.findUnique({
@@ -58,7 +59,7 @@ export const updateEntry = async (id: string, data: Partial<MedicalRecordEntry>)
   });
   
   if (!existing) {
-    throw new Error('Medical record entry not found');
+    throw new AppError(ERROR_CODES.MEDICAL_RECORD_ENTRY_NOT_FOUND, 404);
   }
 
   // Ensure date is a proper Date object if provided

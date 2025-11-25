@@ -1,4 +1,5 @@
 import prisma from '../config/db';
+import { AppError, ERROR_CODES } from '../utils/errors';
 
 export const getAll = async () => {
   return prisma.priceListItem.findMany({
@@ -11,7 +12,7 @@ export const create = async (data: { treatmentTypeId: string; price: number }) =
     const existing = await prisma.priceListItem.findUnique({
         where: { treatmentTypeId: data.treatmentTypeId }
     });
-    if (existing) throw new Error('Price for this treatment type already exists');
+    if (existing) throw new AppError(ERROR_CODES.PRICE_ALREADY_EXISTS, 409);
 
     return prisma.priceListItem.create({
         data: {
@@ -29,7 +30,7 @@ export const update = async (id: string, price: number) => {
     });
     
     if (!existing) {
-        throw new Error('Price list item not found');
+        throw new AppError(ERROR_CODES.PRICE_LIST_ITEM_NOT_FOUND, 404);
     }
 
     return prisma.priceListItem.update({
@@ -46,7 +47,7 @@ export const remove = async (id: string) => {
     });
     
     if (!existing) {
-        throw new Error('Price list item not found');
+        throw new AppError(ERROR_CODES.PRICE_LIST_ITEM_NOT_FOUND, 404);
     }
 
     return prisma.priceListItem.delete({

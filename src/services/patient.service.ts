@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { Patient } from '@prisma/client';
+import { AppError, ERROR_CODES } from '../utils/errors';
 
 export const getAll = async () => {
   return prisma.patient.findMany({
@@ -43,7 +44,7 @@ export const update = async (id: string, data: Partial<Patient>) => {
   });
   
   if (!existing) {
-    throw new Error('Patient not found');
+    throw new AppError(ERROR_CODES.PATIENT_NOT_FOUND, 404);
   }
 
   // Ensure dateOfBirth is a proper Date object if provided
@@ -67,7 +68,7 @@ export const remove = async (id: string) => {
   });
   
   if (!existing) {
-    throw new Error('Patient not found');
+    throw new AppError(ERROR_CODES.PATIENT_NOT_FOUND, 404);
   }
 
   // MedicalRecord is set to Cascade delete in schema, so this should be safe

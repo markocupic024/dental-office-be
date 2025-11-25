@@ -1,4 +1,5 @@
 import prisma from '../config/db';
+import { AppError, ERROR_CODES } from '../utils/errors';
 
 export const getAll = async () => {
   return prisma.treatmentType.findMany({
@@ -18,7 +19,7 @@ export const create = async (label: string) => {
   });
 
   if (existing) {
-    throw new Error('Treatment type already exists');
+    throw new AppError(ERROR_CODES.TREATMENT_TYPE_ALREADY_EXISTS, 409);
   }
 
   return prisma.treatmentType.create({
@@ -30,7 +31,7 @@ export const update = async (id: string, label: string) => {
   // Check if treatment type exists
   const type = await prisma.treatmentType.findUnique({ where: { id }});
   if (!type) {
-    throw new Error('Treatment type not found');
+    throw new AppError(ERROR_CODES.TREATMENT_TYPE_NOT_FOUND, 404);
   }
 
   // Check unique exclude current
@@ -45,7 +46,7 @@ export const update = async (id: string, label: string) => {
   });
 
   if (existing) {
-    throw new Error('Treatment type already exists');
+    throw new AppError(ERROR_CODES.TREATMENT_TYPE_ALREADY_EXISTS, 409);
   }
 
   return prisma.treatmentType.update({
@@ -57,7 +58,7 @@ export const update = async (id: string, label: string) => {
 export const remove = async (id: string) => {
     // Check if treatment type exists
     const type = await prisma.treatmentType.findUnique({ where: { id }});
-    if (!type) throw new Error('Treatment type not found');
+    if (!type) throw new AppError(ERROR_CODES.TREATMENT_TYPE_NOT_FOUND, 404);
 
     // Check usage in Appointments (now by ID reference)
     const usageCount = await prisma.appointment.count({
@@ -65,7 +66,7 @@ export const remove = async (id: string) => {
     });
 
     if (usageCount > 0) {
-        throw new Error('Cannot delete treatment type used in appointments');
+        throw new AppError(ERROR_CODES.TREATMENT_TYPE_IN_USE_APPOINTMENTS, 409);
     }
 
     // Check usage in Medical Record Entries
@@ -74,7 +75,7 @@ export const remove = async (id: string) => {
     });
 
     if (medicalRecordUsage > 0) {
-        throw new Error('Cannot delete treatment type used in medical records');
+        throw new AppError(ERROR_CODES.TREATMENT_TYPE_IN_USE_MEDICAL_RECORDS, 409);
     }
 
     return prisma.treatmentType.delete({

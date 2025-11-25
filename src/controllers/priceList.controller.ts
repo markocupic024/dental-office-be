@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as priceService from '../services/priceList.service';
+import { AppError } from '../utils/errors';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -15,8 +16,8 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
         const item = await priceService.create(req.body);
         res.status(201).json(item);
     } catch (error: any) {
-        if (error.message.includes('already exists')) {
-            return res.status(409).json({ error: error.message });
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({ error: error.code });
         }
         next(error);
     }
@@ -27,8 +28,8 @@ export const update = async (req: Request, res: Response, next: NextFunction) =>
         const item = await priceService.update(req.params.id, req.body.price);
         res.json(item);
     } catch (error: any) {
-        if (error.message === 'Price list item not found') {
-            return res.status(404).json({ error: error.message });
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({ error: error.code });
         }
         next(error);
     }
@@ -39,8 +40,8 @@ export const remove = async (req: Request, res: Response, next: NextFunction) =>
         await priceService.remove(req.params.id);
         res.status(200).json({ message: 'Price list item deleted' });
     } catch (error: any) {
-        if (error.message === 'Price list item not found') {
-            return res.status(404).json({ error: error.message });
+        if (error instanceof AppError) {
+            return res.status(error.statusCode).json({ error: error.code });
         }
         next(error);
     }

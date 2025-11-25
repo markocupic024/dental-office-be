@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as authService from '../services/auth.service';
+import { AppError, ERROR_CODES } from '../utils/errors';
 
 export const login = async (
   req: Request,
@@ -11,11 +12,10 @@ export const login = async (
     const result = await authService.login({ email, password });
     res.status(200).json(result);
   } catch (error: any) {
-    if (error.message === 'Invalid credentials') {
-      res.status(401).json({ error: 'Pogrešan email ili lozinka' });
-    } else {
-      next(error);
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ error: error.code });
     }
+    next(error);
   }
 };
 

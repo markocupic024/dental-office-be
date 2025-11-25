@@ -1,5 +1,6 @@
 import prisma from '../config/db';
 import { Appointment } from '@prisma/client';
+import { AppError, ERROR_CODES } from '../utils/errors';
 
 export const getAll = async (startDate?: string, endDate?: string) => {
   const where: any = {};
@@ -32,7 +33,7 @@ export const getById = async (id: string) => {
 export const create = async (data: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) => {
   // RULE: Block creating appointment with "completed" status without patient
   if (data.status === 'completed' && !data.patientId) {
-    throw new Error('Patient is required to mark appointment as completed');
+    throw new AppError(ERROR_CODES.PATIENT_REQUIRED_FOR_COMPLETION, 400);
   }
 
   // Ensure date is a proper Date object
@@ -45,17 +46,17 @@ export const create = async (data: Omit<Appointment, 'id' | 'createdAt' | 'updat
   if (data.status === 'completed' && data.patientId) {
     return prisma.$transaction(async (tx) => {
       const patient = await tx.patient.findUnique({ where: { id: data.patientId! }});
-      if (!patient) throw new Error('Patient not found');
+      if (!patient) throw new AppError(ERROR_CODES.PATIENT_NOT_FOUND, 404);
 
       if (patient.hasPayrollDeduction) {
         const months = data.payrollDeductionMonths;
         const amount = data.payrollDeductionAmount;
         
         if (!months || months < 1) {
-          throw new Error('Payroll deduction months required for this patient');
+          throw new AppError(ERROR_CODES.PAYROLL_DEDUCTION_MONTHS_REQUIRED, 400);
         }
         if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-          throw new Error('Payroll deduction amount is required and must be a positive number for this patient');
+          throw new AppError(ERROR_CODES.PAYROLL_DEDUCTION_AMOUNT_REQUIRED, 400);
         }
       }
 
@@ -103,17 +104,17 @@ export const update = async (id: string, data: Partial<Appointment>) => {
   // Transactional update for side effects
   return prisma.$transaction(async (tx) => {
     const appointment = await tx.appointment.findUnique({ where: { id } });
-    if (!appointment) throw new Error('Appointment not found');
+    if (!appointment) throw new AppError(ERROR_CODES.APPOINTMENT_NOT_FOUND, 404);
 
     // RULE 1: Block status change if already "completed"
     if (appointment.status === 'completed' && data.status && data.status !== 'completed') {
-        throw new Error('Cannot change status of a completed appointment');
+        throw new AppError(ERROR_CODES.CANNOT_CHANGE_COMPLETED_STATUS, 400);
     }
 
     // RULE 2: Block setting status to "completed" without patient
     const finalPatientId = data.patientId !== undefined ? data.patientId : appointment.patientId;
     if (data.status === 'completed' && !finalPatientId) {
-        throw new Error('Patient is required to mark appointment as completed');
+        throw new AppError(ERROR_CODES.PATIENT_REQUIRED_FOR_COMPLETION, 400);
     }
 
     // Logic if status is changing to completed
@@ -121,18 +122,18 @@ export const update = async (id: string, data: Partial<Appointment>) => {
         const patientId = finalPatientId!; // Already validated above
 
         const patient = await tx.patient.findUnique({ where: { id: patientId }});
-        if (!patient) throw new Error('Patient not found');
+        if (!patient) throw new AppError(ERROR_CODES.PATIENT_NOT_FOUND, 404);
 
         if (patient.hasPayrollDeduction) {
             const months = data.payrollDeductionMonths || appointment.payrollDeductionMonths;
             const amount = data.payrollDeductionAmount || appointment.payrollDeductionAmount;
             
             if (!months || months < 1) {
-                throw new Error('Payroll deduction months required for this patient');
+                throw new AppError(ERROR_CODES.PAYROLL_DEDUCTION_MONTHS_REQUIRED, 400);
             }
              // Amount is usually set by frontend, strictly we should ensure it's there
              if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-                 throw new Error('Payroll deduction amount is required and must be a positive number for this patient');
+                 throw new AppError(ERROR_CODES.PAYROLL_DEDUCTION_AMOUNT_REQUIRED, 400);
              }
         }
 
@@ -191,7 +192,7 @@ export const remove = async (id: string) => {
   });
   
   if (!existing) {
-    throw new Error('Appointment not found');
+    throw new AppError(ERROR_CODES.APPOINTMENT_NOT_FOUND, 404);
   }
 
   return prisma.appointment.delete({

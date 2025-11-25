@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as mrService from '../services/medicalRecord.service';
+import { AppError } from '../utils/errors';
 
 export const getByPatientId = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -33,8 +34,8 @@ export const updateEntry = async (req: Request, res: Response, next: NextFunctio
     const entry = await mrService.updateEntry(req.params.id, req.body);
     res.json(entry);
   } catch (error: any) {
-    if (error.message === 'Medical record entry not found') {
-      return res.status(404).json({ error: error.message });
+    if (error instanceof AppError) {
+      return res.status(error.statusCode).json({ error: error.code });
     }
     next(error);
   }
