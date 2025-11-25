@@ -99,12 +99,17 @@ export const update = async (id: string, data: Partial<Appointment>) => {
         });
 
         if (!existingEntry) {
+            // Ensure date is a proper Date object
+            const entryDate = data.date 
+                ? (data.date instanceof Date ? data.date : new Date(data.date))
+                : (appointment.date instanceof Date ? appointment.date : new Date(appointment.date));
+            
             await tx.medicalRecordEntry.create({
                 data: {
                     medicalRecordId: medicalRecord.id,
                     appointmentId: id,
                     treatmentTypeId: data.treatmentTypeId || appointment.treatmentTypeId,
-                    date: data.date || appointment.date,
+                    date: entryDate,
                     doctorReport: data.notes || appointment.notes || ''
                 }
             });
