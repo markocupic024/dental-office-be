@@ -62,9 +62,40 @@ export const create = async (data: { type: ReportType; date: string; companyName
             throw new AppError(ERROR_CODES.INVALID_REPORT_TYPE, 400);
     }
 
+    // Check for duplicate reports
     if (data.type === 'payrollDeduction') {
-        return generatePayrollReport(reportDate, data.companyName);
+        // For payroll reports, check for matching type, date range, and companyName
+        // Note: payroll reports store startDate and endDate as reportDate in the database
+        // Normalize reportDate to start of day for comparison and storage consistency
+        const normalizedReportDate = startOfDay(reportDate);
+        const existingPayrollReport = await prisma.report.findFirst({
+            where: {
+                type: 'payrollDeduction',
+                startDate: normalizedReportDate,
+                endDate: normalizedReportDate,
+                companyName: data.companyName || null,
+            },
+        });
+
+        if (existingPayrollReport) {
+            throw new AppError(ERROR_CODES.REPORT_ALREADY_EXISTS, 409);
+        }
+
+        return generatePayrollReport(normalizedReportDate, data.companyName);
     } else {
+        // For regular reports, check for matching type, startDate, and endDate
+        const existingReport = await prisma.report.findFirst({
+            where: {
+                type: data.type,
+                startDate: startDate,
+                endDate: endDate,
+            },
+        });
+
+        if (existingReport) {
+            throw new AppError(ERROR_CODES.REPORT_ALREADY_EXISTS, 409);
+        }
+
         return generateTreatmentReport(data.type, reportDate, startDate, endDate);
     }
 };
